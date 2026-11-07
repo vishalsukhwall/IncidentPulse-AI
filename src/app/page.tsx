@@ -6,14 +6,14 @@ import {
   PRESET_P1_PAYMENT_OUTAGE,
   PRESET_P2_AUTH_SPIKE,
 } from "@/data/incidentPresets";
-import { IncidentPreset, IncidentTriageData } from "@/types/incident";
-import { CommandHeader } from "@/components/CommandHeader";
+import { IncidentPreset, IncidentAnalysisData } from "@/types/incident";
+import { TopControlBar } from "@/components/TopControlBar";
 import { SlaTelemetryStrip } from "@/components/SlaTelemetryStrip";
-import { LogIngestionDrawer } from "@/components/LogIngestionDrawer";
-import { RoutingRunbookTab } from "@/components/RoutingRunbookTab";
-import { TimelineTab } from "@/components/TimelineTab";
-import { DualReportTab } from "@/components/DualReportTab";
-import { CopilotChatTab } from "@/components/CopilotChatTab";
+import { LogInputDrawer } from "@/components/LogInputDrawer";
+import { OverviewRoutingTab } from "@/components/OverviewRoutingTab";
+import { TimelineAnalysisTab } from "@/components/TimelineAnalysisTab";
+import { DualReportsTab } from "@/components/DualReportsTab";
+import { CopilotSplitTab } from "@/components/CopilotSplitTab";
 import { generateIncidentPdf } from "@/lib/pdfReportGenerator";
 import {
   Terminal,
@@ -21,66 +21,53 @@ import {
   FileText,
   Bot,
   Square,
-  Volume2,
-  CheckCircle2,
   Sparkles,
-  ShieldAlert,
+  AlertTriangle,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 
-export default function WarRoomDashboard() {
-  // Active Preset & Ingestion state
+export default function IncidentPulseCommandCenter() {
+  // Preset & Ingestion state
   const [selectedPresetId, setSelectedPresetId] = useState<string>(
     PRESET_P1_PAYMENT_OUTAGE.id
   );
-  const [rawLogs, setRawLogs] = useState<string>(PRESET_P1_PAYMENT_OUTAGE.rawLogs);
-  const [customerEmail, setCustomerEmail] = useState<string>(
-    PRESET_P1_PAYMENT_OUTAGE.customerEmail
-  );
-  const [triageData, setTriageData] = useState<IncidentTriageData>(
-    PRESET_P1_PAYMENT_OUTAGE.triageData
+  const [rawText, setRawText] = useState<string>(PRESET_P1_PAYMENT_OUTAGE.rawText);
+  const [analysisData, setAnalysisData] = useState<IncidentAnalysisData>(
+    PRESET_P1_PAYMENT_OUTAGE.initialAnalysis
   );
 
   // SLA Live Countdown State
   const [remainingSeconds, setRemainingSeconds] = useState<number>(
-    PRESET_P1_PAYMENT_OUTAGE.triageData.slaInitialRemainingSeconds
+    (PRESET_P1_PAYMENT_OUTAGE.initialAnalysis.slaMinutesRemaining || 18) * 60
   );
 
-  // Active Tab: routing | timeline | reports | copilot
+  // Active Tab
   const [activeTab, setActiveTab] = useState<"routing" | "timeline" | "reports" | "copilot">(
     "routing"
   );
 
-  // Ingestion Drawer Open/Closed
+  // Drawer & Processing state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isTriageLoading, setIsTriageLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStep, setAnalysisStep] = useState(0);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Voice Briefing State (Native Web Speech API)
   const [isVoicePlaying, setIsVoicePlaying] = useState(false);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
-  // API Key management
-  const [apiKey, setApiKey] = useState<string>("");
+  // Multi-step scanning messages
+  const scanningSteps = [
+    "Ingesting raw multi-service stack traces & customer emails...",
+    "Gemini 2.5 Flash evaluating error signature & root failure coordinates...",
+    "Computing customer sentiment score & contract ARR at risk...",
+    "Formulating 4-stage timeline & step-by-step CLI runbook...",
+    "Generating Dual Engineering Post-Mortem & VIP Client Executive Brief...",
+  ];
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedKey = localStorage.getItem("incidentpulse_gemini_key");
-      if (savedKey) setApiKey(savedKey);
-    }
-  }, []);
-
-  const handleSetApiKey = (key: string) => {
-    setApiKey(key);
-    if (typeof window !== "undefined") {
-      if (key) {
-        localStorage.setItem("incidentpulse_gemini_key", key);
-      } else {
-        localStorage.removeItem("incidentpulse_gemini_key");
-      }
-    }
-  };
-
-  // Live SLA Countdown ticking down every second
+  // Live SLA Timer ticking down every 1 second
   useEffect(() => {
     const timer = setInterval(() => {
       setRemainingSeconds((prev) => {
@@ -90,56 +77,64 @@ export default function WarRoomDashboard() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [triageData.id]);
+  }, [analysisData.id]);
 
-  // Handle Preset Switching
-  const handleSelectPreset = (presetId: string) => {
+  // Handle Preset Selection: populates rawText and runs live /api/analyze
+  const handleSelectPreset = async (presetId: string) => {
     const preset = ALL_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
 
     handleStopVoice();
-
     setSelectedPresetId(preset.id);
-    setRawLogs(preset.rawLogs);
-    setCustomerEmail(preset.customerEmail);
-    setTriageData(preset.triageData);
-    setRemainingSeconds(preset.triageData.slaInitialRemainingSeconds);
+    setRawText(preset.rawText);
+    setServerError(null);
+
+    // Run live Gemini analysis on preset
+    await triggerLiveAnalysis(preset.rawText);
   };
 
-  // Handle Run AI Triage
-  const handleRunTriage = async () => {
-    if (!rawLogs.trim() && !customerEmail.trim()) return;
+  // Trigger Live Gemini 2.5 Flash Analysis
+  const triggerLiveAnalysis = async (textToAnalyze: string) => {
+    if (!textToAnalyze.trim()) return;
 
     handleStopVoice();
-    setIsTriageLoading(true);
+    setIsAnalyzing(true);
+    setServerError(null);
+    setAnalysisStep(0);
+
+    // Multi-stage indicator intervals
+    const stepInterval = setInterval(() => {
+      setAnalysisStep((prev) => (prev < scanningSteps.length - 1 ? prev + 1 : prev));
+    }, 1200);
 
     try {
-      const response = await fetch("/api/triage", {
+      const response = await fetch("/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(apiKey ? { "x-gemini-api-key": apiKey } : {}),
         },
-        body: JSON.stringify({
-          rawLogs,
-          customerEmail,
-          customApiKey: apiKey,
-        }),
+        body: JSON.stringify({ rawText: textToAnalyze }),
       });
 
       const result = await response.json();
 
       if (response.ok && result.data) {
-        setTriageData(result.data);
-        setRemainingSeconds(result.data.slaInitialRemainingSeconds || 1125);
+        setAnalysisData(result.data);
+        const mins = result.data.slaMinutesRemaining || 20;
+        setRemainingSeconds(mins * 60);
         setIsDrawerOpen(false);
       } else {
-        throw new Error(result.error || "Triage failed");
+        throw new Error(
+          result.error ||
+            "Gemini API analysis failed. Please verify GEMINI_API_KEY in .env.local and restart the server."
+        );
       }
     } catch (err: any) {
-      console.error("Triage call failed, falling back locally:", err);
+      console.error("[Live Analysis Error]:", err);
+      setServerError(err.message || String(err));
     } finally {
-      setIsTriageLoading(false);
+      clearInterval(stepInterval);
+      setIsAnalyzing(false);
     }
   };
 
@@ -152,31 +147,29 @@ export default function WarRoomDashboard() {
 
     window.speechSynthesis.cancel();
 
-    const script = triageData.voiceBriefingScript;
+    const script = analysisData.voiceBriefingScript;
     const utterance = new SpeechSynthesisUtterance(script);
     utterance.rate = 1.05;
     utterance.pitch = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
     const naturalVoice =
-      voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Daniel"))) ||
-      voices.find((v) => v.lang.startsWith("en"));
+      voices.find(
+        (v) =>
+          v.lang.startsWith("en") &&
+          (v.name.includes("Natural") ||
+            v.name.includes("Google") ||
+            v.name.includes("Samantha") ||
+            v.name.includes("Daniel"))
+      ) || voices.find((v) => v.lang.startsWith("en"));
 
     if (naturalVoice) {
       utterance.voice = naturalVoice;
     }
 
-    utterance.onstart = () => {
-      setIsVoicePlaying(true);
-    };
-
-    utterance.onend = () => {
-      setIsVoicePlaying(false);
-    };
-
-    utterance.onerror = () => {
-      setIsVoicePlaying(false);
-    };
+    utterance.onstart = () => setIsVoicePlaying(true);
+    utterance.onend = () => setIsVoicePlaying(false);
+    utterance.onerror = () => setIsVoicePlaying(false);
 
     synthRef.current = utterance;
     window.speechSynthesis.speak(utterance);
@@ -189,10 +182,11 @@ export default function WarRoomDashboard() {
     setIsVoicePlaying(false);
   };
 
-  const handleDownloadPdfGlobal = () => {
+  // PDF Export
+  const handleDownloadPdf = () => {
     setIsDownloadingPdf(true);
     try {
-      generateIncidentPdf(triageData);
+      generateIncidentPdf(analysisData);
     } finally {
       setTimeout(() => setIsDownloadingPdf(false), 600);
     }
@@ -208,8 +202,8 @@ export default function WarRoomDashboard() {
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col text-zinc-100">
-      {/* 1. Top Control Bar */}
-      <CommandHeader
+      {/* 1. Compact Demo-Ready Top Control Bar */}
+      <TopControlBar
         currentPresetId={selectedPresetId}
         onSelectPreset={handleSelectPreset}
         isDrawerOpen={isDrawerOpen}
@@ -217,36 +211,55 @@ export default function WarRoomDashboard() {
         isVoicePlaying={isVoicePlaying}
         onPlayVoiceBriefing={handlePlayVoice}
         onStopVoiceBriefing={handleStopVoice}
-        engineUsed={triageData.engineUsed}
-        apiKey={apiKey}
-        onSetApiKey={handleSetApiKey}
-        presets={ALL_PRESETS}
-        onDownloadPdf={handleDownloadPdfGlobal}
+        isAnalyzing={isAnalyzing}
+        serverError={serverError}
+        onDownloadPdf={handleDownloadPdf}
         isDownloadingPdf={isDownloadingPdf}
       />
 
-      {/* 2. Collapsible Ingestion Drawer */}
-      <LogIngestionDrawer
+      {/* Server Error Toast Banner */}
+      {serverError && (
+        <div className="bg-rose-950 border-b border-rose-800 text-rose-200 px-4 py-3 text-xs font-mono flex items-center justify-between shadow-roseGlow">
+          <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <span>
+                <strong className="text-white">Gemini API Error:</strong> {serverError}
+              </span>
+            </div>
+            <button
+              onClick={() => setServerError(null)}
+              className="text-rose-400 hover:text-white px-2 py-0.5 rounded bg-zinc-900 border border-rose-800"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Ingestion Drawer (Collapsible) */}
+      <LogInputDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
-        rawLogs={rawLogs}
-        setRawLogs={setRawLogs}
-        customerEmail={customerEmail}
-        setCustomerEmail={setCustomerEmail}
-        onRunTriage={handleRunTriage}
-        isLoading={isTriageLoading}
-        onLoadPreset={handleSelectPreset}
+        rawText={rawText}
+        setRawText={setRawText}
+        onRunAnalysis={() => triggerLiveAnalysis(rawText)}
+        isAnalyzing={isAnalyzing}
+        onLoadPreset={(pId) => {
+          const p = ALL_PRESETS.find((x) => x.id === pId);
+          if (p) setRawText(p.rawText);
+        }}
       />
 
       {/* 3. Persistent Executive Telemetry Strip */}
       <SlaTelemetryStrip
-        triageData={triageData}
+        analysisData={analysisData}
         remainingSeconds={remainingSeconds}
       />
 
-      {/* Sticky Voice Briefing Banner */}
+      {/* Voice Briefing Spoken Banner */}
       {isVoicePlaying && (
-        <div className="sticky top-[57px] z-30 w-full bg-rose-950/95 text-white px-4 py-2 border-b border-rose-800 shadow-roseGlow flex items-center justify-between">
+        <div className="sticky top-[53px] z-30 w-full bg-rose-950/95 text-white px-4 py-2 border-b border-rose-800 shadow-roseGlow flex items-center justify-between">
           <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3 text-xs font-mono">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-0.5 h-3.5">
@@ -260,7 +273,7 @@ export default function WarRoomDashboard() {
                 CRISIS VOICE BRIEFING SPOKEN:
               </span>
               <span className="text-zinc-300 truncate max-w-xl hidden md:inline">
-                "{triageData.voiceBriefingScript.substring(0, 95)}..."
+                "{analysisData.voiceBriefingScript.substring(0, 95)}..."
               </span>
             </div>
 
@@ -275,9 +288,25 @@ export default function WarRoomDashboard() {
         </div>
       )}
 
-      {/* 4. Main War-Room Workspace */}
+      {/* Live Analyzing Scanning Overlay */}
+      {isAnalyzing && (
+        <div className="w-full bg-blue-950/40 border-b border-blue-500/30 px-4 py-3 text-xs font-mono text-blue-200">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0" />
+            <div className="flex-1">
+              <span className="font-bold text-white mr-2">LIVE GEMINI 2.5 FLASH RUNNING:</span>
+              <span className="text-blue-300">{scanningSteps[analysisStep]}</span>
+            </div>
+            <span className="text-[10px] text-blue-400 uppercase tracking-wider">
+              Step {analysisStep + 1} of {scanningSteps.length}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Segmented 4-Tab Multi-View Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-6 py-6 space-y-6">
-        {/* Clean 4-Tab Navigation */}
+        {/* Navigation Tabs */}
         <div className="border-b border-zinc-800 pb-1">
           <nav className="flex space-x-2 sm:space-x-3 overflow-x-auto font-mono text-xs">
             {/* Tab 1 */}
@@ -290,9 +319,9 @@ export default function WarRoomDashboard() {
               }`}
             >
               <Terminal className="w-4 h-4" />
-              <span>Tab 1: Auto-Routing & Runbook Fix</span>
+              <span>Tab 1: Executive Overview & Auto-Routing</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-                {triageData.routing.runbookSteps.length} Steps
+                {analysisData.routing.runbookSteps.length} Steps
               </span>
             </button>
 
@@ -306,9 +335,9 @@ export default function WarRoomDashboard() {
               }`}
             >
               <Clock className="w-4 h-4" />
-              <span>Tab 2: Chronological Timeline (4 Pillars)</span>
+              <span>Tab 2: Deep Analysis & Incident Timeline</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-                4 Stages
+                4 Pillars
               </span>
             </button>
 
@@ -322,7 +351,7 @@ export default function WarRoomDashboard() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              <span>Tab 3: Dual Reports & PDF Export</span>
+              <span>Tab 3: Dual-Audience Deliverables & Export</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-emerald-400 border border-emerald-500/20 font-bold">
                 Dual PDF
               </span>
@@ -338,44 +367,47 @@ export default function WarRoomDashboard() {
               }`}
             >
               <Bot className="w-4 h-4" />
-              <span>Tab 4: Log-Grounded Copilot Chat</span>
+              <span>Tab 4: Interactive AI Copilot</span>
               <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-purple-300 border border-purple-500/20 font-bold">
-                Interactive
+                Split Viewer
               </span>
             </button>
           </nav>
         </div>
 
-        {/* Tab Content Display */}
+        {/* Tab Content */}
         <div className="pt-2">
           {activeTab === "routing" && (
-            <RoutingRunbookTab routing={triageData.routing} />
+            <OverviewRoutingTab routing={analysisData.routing} />
           )}
 
           {activeTab === "timeline" && (
-            <TimelineTab timeline={triageData.timeline} />
+            <TimelineAnalysisTab
+              timeline={analysisData.timeline}
+              engineerPostMortem={analysisData.dualReports.engineerPostMortem}
+            />
           )}
 
           {activeTab === "reports" && (
-            <DualReportTab
-              triageData={triageData}
-              onDownloadPdf={handleDownloadPdfGlobal}
+            <DualReportsTab
+              dualReports={analysisData.dualReports}
+              vipClients={analysisData.vipClients}
+              severity={analysisData.severity}
+              onDownloadPdf={handleDownloadPdf}
               isDownloadingPdf={isDownloadingPdf}
             />
           )}
 
           {activeTab === "copilot" && (
-            <CopilotChatTab
-              triageData={triageData}
-              rawLogs={rawLogs}
-              customerEmail={customerEmail}
-              apiKey={apiKey}
+            <CopilotSplitTab
+              analysisData={analysisData}
+              rawText={rawText}
             />
           )}
         </div>
       </main>
 
-      {/* 5. Command Center Bottom Telemetry Strip */}
+      {/* Footer */}
       <footer className="w-full border-t border-zinc-800 bg-zinc-950 py-3.5 px-4 lg:px-6 font-mono text-[11px] text-zinc-500 mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-3">
@@ -384,13 +416,13 @@ export default function WarRoomDashboard() {
               IncidentPulse AI War-Room Active
             </span>
             <span className="text-zinc-700">•</span>
-            <span>Cluster: <code className="text-zinc-400">prod-eu-west-1</code></span>
+            <span>Auth: <code className="text-zinc-400">process.env.GEMINI_API_KEY</code></span>
             <span className="text-zinc-700">•</span>
-            <span>Engine: <code className="text-zinc-400">{triageData.engineUsed}</code></span>
+            <span>Model: <code className="text-zinc-400">gemini-2.5-flash</code></span>
           </div>
 
           <div className="text-zinc-400">
-            Autonomous Incident Triage & War-Room Copilot | Enterprise SRE Systems
+            Autonomous Incident Triage & War-Room Copilot | SRE Engineering Command
           </div>
         </div>
       </footer>

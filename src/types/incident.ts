@@ -1,23 +1,13 @@
 export type IncidentSeverity = "P1" | "P2" | "P3" | "P4";
 
-export interface SentimentAnalysis {
-  score: number; // 0-100 (100 = most furious)
-  label: string; // e.g. "94/100 Furious — Escalation Risk"
-  urgency: "CRITICAL" | "HIGH" | "ELEVATED" | "MODERATE";
-  toneSummary: string;
-  keyFrustrationPoints: string[];
-  customerQuote: string;
-}
-
-export interface VipClientProfile {
-  name: string; // e.g. "Apex Global Fintech Corp"
-  tier: string; // e.g. "Tier-1 Platinum Enterprise"
-  contractValue: string; // e.g. "$2.4M ARR"
-  contractValueRaw: number; // 2400000
-  slaThresholdMinutes: number; // e.g. 30
-  slaPenaltyTerms: string; // e.g. "15% monthly invoice rebate ($30,000 credit) upon SLA breach + executive churn review"
-  primaryContact: string; // e.g. "Marcus Vance (VP Engineering)"
-  businessImpact: string;
+export interface VipClient {
+  name: string;
+  tier: string;
+  arr: string;
+  slaThresholdMinutes: number;
+  penaltyTerms: string;
+  primaryContact: string;
+  impactSummary: string;
 }
 
 export interface RunbookStep {
@@ -27,35 +17,73 @@ export interface RunbookStep {
   explanation: string;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
   expectedOutcome: string;
-  verificationCmd?: string;
+  verificationCmd: string;
   executed?: boolean;
 }
 
-export interface AutoRoutingDiagnosis {
-  failingMicroservice: string; // e.g. "payment-gateway-v2"
-  failingFile: string; // e.g. "src/services/payments/redisPool.ts"
-  failingLine: number; // e.g. 142
-  errorSignature: string; // e.g. "PoolAcquisitionTimeoutError / Max Redis Connections Exceeded"
-  assignedSquad: string; // e.g. "Payments-Core Squad"
-  onCallHandle: string; // e.g. "@arjun-sre (Lead On-Call)"
-  secondaryEscalation: string; // e.g. "@priya-infra (Database Guild Lead)"
-  routingConfidence: number; // e.g. 98%
-  routingRationale: string;
+export interface IncidentRouting {
+  failingFile: string;
+  failingLine: number;
+  microservice: string;
+  errorSignature: string;
+  assignedDepartment: string;
+  onCallHandle: string;
+  secondaryEscalation: string;
+  confidence: number;
+  routingReason: string;
+  executiveBullets: string[];
   runbookSteps: RunbookStep[];
 }
 
-export interface TimelinePillar {
-  id: "kab-chalu-hua" | "kya-hua" | "kyun-hua" | "ab-kya-karein";
-  pillarBadge: string; // e.g. "1. KAB CHALU HUA (INCIDENT START)"
+export interface TimelinePillarStart {
   timestamp: string;
   title: string;
   summary: string;
   bullets: string[];
-  codeOrLogReference?: string;
-  statusType: "start" | "impact" | "root-cause" | "action";
+  citation: string;
 }
 
-export interface TechnicalPostMortem {
+export interface TimelinePillarImpact {
+  timestamp: string;
+  title: string;
+  summary: string;
+  bullets: string[];
+  blastRadius: string;
+  citation: string;
+}
+
+export interface TimelinePillarRootCause {
+  timestamp: string;
+  title: string;
+  summary: string;
+  technicalChain: string[];
+  codeSnippetOrTrace: string;
+  citation: string;
+}
+
+export interface TimelinePillarAction {
+  timestamp: string;
+  title: string;
+  summary: string;
+  actionBullets: string[];
+  citation: string;
+}
+
+export interface TimelinePillarPrevention {
+  title: string;
+  guardrails: string[];
+  ticketRef: string;
+}
+
+export interface IncidentTimeline {
+  startedAt: TimelinePillarStart;
+  whatHappened: TimelinePillarImpact;
+  whyItHappened: TimelinePillarRootCause;
+  immediateAction: TimelinePillarAction;
+  longTermPrevention: TimelinePillarPrevention;
+}
+
+export interface EngineerPostMortem {
   incidentId: string;
   incidentTitle: string;
   severity: IncidentSeverity;
@@ -69,43 +97,46 @@ export interface TechnicalPostMortem {
   author: string;
 }
 
-export interface VipClientBrief {
+export interface ClientBrief {
   clientName: string;
   recipient: string;
   subject: string;
-  emailBody: string;
   plainEnglishExplanation: string;
+  emailBody: string;
   commercialImpactMitigation: string;
   slaCommitmentStatus: string;
   nextUpdateEta: string;
   signoff: string;
 }
 
-export interface IncidentTriageData {
+export interface DualReports {
+  engineerPostMortem: EngineerPostMortem;
+  clientBrief: ClientBrief;
+}
+
+export interface IncidentAnalysisData {
   id: string;
   title: string;
   severity: IncidentSeverity;
-  severityReasoning: string;
-  sentiment: SentimentAnalysis;
-  vipClient: VipClientProfile;
-  routing: AutoRoutingDiagnosis;
-  timeline: TimelinePillar[];
-  techPostMortem: TechnicalPostMortem;
-  vipClientBrief: VipClientBrief;
+  sentimentScore: number;
+  sentimentLabel: string;
+  slaMinutesRemaining: number;
+  slaRuleSummary: string;
+  vipClients: VipClient[];
+  routing: IncidentRouting;
+  timeline: IncidentTimeline;
+  dualReports: DualReports;
   voiceBriefingScript: string;
-  slaTotalSeconds: number; // default e.g. 1800 for P1 (30m)
-  slaInitialRemainingSeconds: number; // e.g. 1125 (18m 45s)
-  isLiveAiGenerated?: boolean;
-  engineUsed: "Gemini 2.5 Flash Live" | "Deterministic SRE Engine";
-  generatedAt: string;
+  analyzedAt: string;
+  source?: "gemini-2.5-flash" | "preset-cached";
 }
 
-export interface CopilotMessage {
+export interface CopilotChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   timestamp: string;
-  citations?: string[]; // e.g. ["[LOG 14:02:18]", "[EMAIL Lines 4-8]"]
+  citations?: string[];
 }
 
 export interface IncidentPreset {
@@ -115,7 +146,6 @@ export interface IncidentPreset {
   severity: IncidentSeverity;
   title: string;
   description: string;
-  rawLogs: string;
-  customerEmail: string;
-  triageData: IncidentTriageData;
+  rawText: string;
+  initialAnalysis: IncidentAnalysisData;
 }

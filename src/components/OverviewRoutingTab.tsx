@@ -9,20 +9,16 @@ import {
   Check,
   Terminal,
   ShieldCheck,
-  AlertTriangle,
-  Flame,
-  CheckCircle2,
-  ExternalLink,
-  ChevronRight,
-  Code2,
+  ListOrdered,
+  Sparkles,
 } from "lucide-react";
-import { AutoRoutingDiagnosis, RunbookStep } from "@/types/incident";
+import { IncidentRouting } from "@/types/incident";
 
-interface RoutingRunbookTabProps {
-  routing: AutoRoutingDiagnosis;
+interface OverviewRoutingTabProps {
+  routing: IncidentRouting;
 }
 
-export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
+export const OverviewRoutingTab: React.FC<OverviewRoutingTabProps> = ({
   routing,
 }) => {
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -47,7 +43,7 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Diagnostic KPI Grid */}
+      {/* 3 Executive Overview Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Card 1: Root Failure Coordinates */}
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-6 space-y-4">
@@ -66,12 +62,12 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Failing Microservice</span>
               <span className="text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
                 <Server className="w-3.5 h-3.5 text-blue-400" />
-                {routing.failingMicroservice}
+                {routing.microservice}
               </span>
             </div>
 
             <div className="border-t border-zinc-800/80 pt-2.5">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Code Locus & Line</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Failing File & Line</span>
               <div className="flex items-center justify-between text-xs text-rose-300 font-semibold mt-0.5">
                 <span className="truncate" title={routing.failingFile}>
                   {routing.failingFile}
@@ -83,10 +79,10 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
             </div>
 
             <div className="border-t border-zinc-800/80 pt-2.5">
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Citation Reference</span>
-              <span className="inline-block mt-1 font-mono text-[10px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-700">
-                LOG 16:48:15.190Z · {routing.failingFile}:{routing.failingLine}
-              </span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Error Signature</span>
+              <p className="text-[11px] text-zinc-300 leading-snug line-clamp-2 mt-0.5">
+                {routing.errorSignature}
+              </p>
             </div>
           </div>
         </div>
@@ -99,14 +95,14 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
               Assigned SRE Squad
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-              {routing.routingConfidence}% CONFIDENCE
+              {routing.confidence}% CONFIDENCE
             </span>
           </div>
 
           <div className="bg-zinc-950 border border-zinc-800/80 rounded-lg p-4 space-y-3 font-mono">
             <div>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Owning Engineering Squad</span>
-              <span className="text-sm font-bold text-white mt-0.5 block">{routing.assignedSquad}</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Owning Department / Squad</span>
+              <span className="text-sm font-bold text-white mt-0.5 block">{routing.assignedDepartment}</span>
             </div>
 
             <div className="border-t border-zinc-800/80 pt-2.5 flex items-center justify-between">
@@ -115,7 +111,7 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
                 <span className="text-xs text-emerald-400 font-bold">{routing.onCallHandle}</span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Escalation Secondary</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Backup Escalation</span>
                 <span className="text-xs text-zinc-400">{routing.secondaryEscalation}</span>
               </div>
             </div>
@@ -123,18 +119,18 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
             <div className="border-t border-zinc-800/80 pt-2.5">
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">Routing Rationale</span>
               <p className="text-[11px] text-zinc-400 leading-snug mt-0.5 line-clamp-2">
-                {routing.routingRationale}
+                {routing.routingReason}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Live Remediation Progress */}
+        {/* Card 3: Executive Summary & Progress */}
         <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 font-bold">
               <Terminal className="w-4 h-4 text-blue-400" />
-              Remediation Checklist
+              Remediation Progress
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
               {completedCount} of {totalSteps} Executed
@@ -164,11 +160,32 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
             </div>
 
             <p className="text-[11px] text-zinc-400 font-sans leading-relaxed">
-              Execute each runbook step in sequence. Click <span className="text-white font-mono">Copy</span> to run in your cluster, then click <span className="text-emerald-400 font-mono">Mark Executed</span>.
+              Execute each runbook step in sequence. Click <span className="text-white font-mono">Copy</span> to run in your terminal, then toggle verification.
             </p>
           </div>
         </div>
       </div>
+
+      {/* Crisp 3-Bullet Executive Takeaway */}
+      {routing.executiveBullets && routing.executiveBullets.length > 0 && (
+        <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-5 space-y-2.5">
+          <span className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+            Executive Takeaways (Crisp 3-Bullet Brief)
+          </span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {routing.executiveBullets.slice(0, 3).map((bullet, idx) => (
+              <div
+                key={idx}
+                className="bg-zinc-950 border border-zinc-800/80 rounded-lg p-3 text-xs font-mono text-zinc-300 leading-snug flex items-start gap-2"
+              >
+                <span className="text-blue-400 font-bold mt-0.5">•</span>
+                <span>{bullet}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Step-by-Step Runbook Section */}
       <div className="bg-zinc-900/80 border border-zinc-800 rounded-xl p-6 space-y-5">
@@ -176,7 +193,7 @@ export const RoutingRunbookTab: React.FC<RoutingRunbookTabProps> = ({
           <div>
             <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2">
               <Terminal className="w-4 h-4 text-blue-400" />
-              Targeted SRE Runbook Remediation Steps
+              Targeted SRE Runbook Remediation Checklist
             </h3>
             <p className="text-xs text-zinc-400 font-mono mt-0.5">
               Production-hardened commands designed to resolve contention without data loss or shopper disruption.

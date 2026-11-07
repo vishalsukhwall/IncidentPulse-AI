@@ -1,22 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   Flame,
   Volume2,
   Square,
+  Download,
+  FolderInput,
+  CheckCircle2,
+  AlertTriangle,
   Sparkles,
   Cpu,
-  Key,
-  FolderInput,
-  Download,
-  ShieldAlert,
-  Play,
-  RotateCcw,
 } from "lucide-react";
 import { IncidentPreset } from "@/types/incident";
 
-interface CommandHeaderProps {
+interface TopControlBarProps {
   currentPresetId: string;
   onSelectPreset: (presetId: string) => void;
   isDrawerOpen: boolean;
@@ -24,15 +22,13 @@ interface CommandHeaderProps {
   isVoicePlaying: boolean;
   onPlayVoiceBriefing: () => void;
   onStopVoiceBriefing: () => void;
-  engineUsed: "Gemini 2.5 Flash Live" | "Deterministic SRE Engine";
-  apiKey: string;
-  onSetApiKey: (key: string) => void;
-  presets: IncidentPreset[];
+  isAnalyzing: boolean;
+  serverError: string | null;
   onDownloadPdf: () => void;
   isDownloadingPdf?: boolean;
 }
 
-export const CommandHeader: React.FC<CommandHeaderProps> = ({
+export const TopControlBar: React.FC<TopControlBarProps> = ({
   currentPresetId,
   onSelectPreset,
   isDrawerOpen,
@@ -40,27 +36,15 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
   isVoicePlaying,
   onPlayVoiceBriefing,
   onStopVoiceBriefing,
-  engineUsed,
-  apiKey,
-  onSetApiKey,
-  presets,
+  isAnalyzing,
+  serverError,
   onDownloadPdf,
   isDownloadingPdf = false,
 }) => {
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [keyInput, setKeyInput] = useState(apiKey);
-
-  const handleSaveKey = () => {
-    onSetApiKey(keyInput.trim());
-    setShowKeyModal(false);
-  };
-
-  const isGeminiLive = engineUsed.includes("Gemini");
-
   return (
-    <header className="w-full border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-6 py-2.5">
+    <header className="w-full border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-6 py-2.5">
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-        {/* Left: Branding & Grounding Pill */}
+        {/* Left: Brand + Live Engine Pill */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-blue-500 shadow-sm">
@@ -83,41 +67,41 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
 
           <div className="h-5 w-px bg-zinc-800 hidden sm:block" />
 
-          {/* Engine Grounding Status Pill */}
-          <button
-            onClick={() => setShowKeyModal(true)}
-            title="Click to view or set Gemini API Key"
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono border transition-all ${
-              isGeminiLive
-                ? "bg-purple-500/10 text-purple-300 border-purple-500/30 hover:border-purple-400"
-                : "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:border-blue-400"
-            }`}
-          >
-            {isGeminiLive ? (
-              <>
-                <Sparkles className="w-3 h-3 text-purple-400 animate-spin-slow" />
-                <span className="font-medium">Gemini 2.5 Flash Live</span>
-              </>
+          {/* Live Server Engine Status Pill */}
+          <div className="flex items-center">
+            {isAnalyzing ? (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                ● ANALYZING WITH GEMINI...
+              </span>
+            ) : serverError ? (
+              <span
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                title={serverError}
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                ● SERVER API ERROR
+              </span>
             ) : (
-              <>
-                <Cpu className="w-3 h-3 text-blue-400" />
-                <span className="font-medium">Local SRE Engine</span>
-              </>
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                ● LIVE GEMINI 2.5 FLASH
+              </span>
             )}
-            <Key className="w-2.5 h-2.5 text-zinc-400 ml-0.5 opacity-60" />
-          </button>
+          </div>
         </div>
 
-        {/* Right: Presets, Briefing, Ingestion & PDF Export Controls */}
+        {/* Right: Quick Presets + Audio + Drawer + Download */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Preset 1: Simulate P1 VIP Payment Outage */}
+          {/* Preset 1: P1 Outage */}
           <button
             onClick={() => onSelectPreset("preset-p1-payment-outage")}
+            disabled={isAnalyzing}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all border ${
               currentPresetId === "preset-p1-payment-outage"
                 ? "bg-rose-500/15 text-rose-300 border-rose-500/40 shadow-roseGlow ring-1 ring-rose-500/30 font-semibold"
                 : "bg-zinc-900/90 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"
-            }`}
+            } ${isAnalyzing ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
             <span>Simulate P1 VIP Payment Outage</span>
@@ -126,14 +110,15 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
             </span>
           </button>
 
-          {/* Preset 2: Simulate P2 Auth Spike */}
+          {/* Preset 2: P2 Auth */}
           <button
             onClick={() => onSelectPreset("preset-p2-auth-spike")}
+            disabled={isAnalyzing}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all border ${
               currentPresetId === "preset-p2-auth-spike"
                 ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-amberGlow ring-1 ring-amber-500/30 font-semibold"
                 : "bg-zinc-900/90 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:text-white"
-            }`}
+            } ${isAnalyzing ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             <span>Simulate P2 Auth Spike</span>
@@ -142,7 +127,7 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
             </span>
           </button>
 
-          {/* Voice Crisis Briefing (Web Speech API) */}
+          {/* 30-Sec Crisis Audio Briefing */}
           {isVoicePlaying ? (
             <button
               onClick={onStopVoiceBriefing}
@@ -168,7 +153,7 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
             </button>
           )}
 
-          {/* Upload / Paste Logs Drawer Trigger */}
+          {/* Drawer Toggle */}
           <button
             onClick={onToggleDrawer}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all border ${
@@ -178,70 +163,20 @@ export const CommandHeader: React.FC<CommandHeaderProps> = ({
             }`}
           >
             <FolderInput className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{isDrawerOpen ? "Hide Log Ingestion" : "Upload / Paste Logs"}</span>
+            <span>{isDrawerOpen ? "Hide Log Drawer" : "Paste Logs / Upload File"}</span>
           </button>
 
-          {/* Download Dual PDF Report Button (Top Bar 1-Click Export) */}
+          {/* Top-Bar PDF Export */}
           <button
             onClick={onDownloadPdf}
             disabled={isDownloadingPdf}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-900 text-zinc-200 border border-zinc-800 hover:border-zinc-700 hover:text-white transition-all active:scale-95"
-            title="Download Dual 2-Page Executive & Technical Post-Mortem PDF"
           >
             <Download className="w-3.5 h-3.5 text-emerald-400" />
             <span>{isDownloadingPdf ? "Generating..." : "Download PDF Report"}</span>
           </button>
         </div>
       </div>
-
-      {/* API Key Modal */}
-      {showKeyModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-mono font-bold text-white flex items-center gap-2">
-                <Key className="w-4 h-4 text-blue-400" />
-                Gemini API Key Configuration
-              </h3>
-              <button
-                onClick={() => setShowKeyModal(false)}
-                className="text-zinc-500 hover:text-white text-xs font-mono"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-xs text-zinc-400 mb-4 leading-relaxed font-sans">
-              IncidentPulse AI defaults to an offline <span className="text-blue-400 font-semibold font-mono">Deterministic SRE Engine</span>.
-              To route live calls through <span className="text-purple-400 font-semibold font-mono">gemini-2.5-flash</span>, enter your Gemini API key below:
-            </p>
-            <input
-              type="password"
-              placeholder="AIzaSy..."
-              value={keyInput}
-              onChange={(e) => setKeyInput(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 mb-4"
-            />
-            <div className="flex items-center justify-end gap-2 font-mono">
-              <button
-                onClick={() => {
-                  setKeyInput("");
-                  onSetApiKey("");
-                  setShowKeyModal(false);
-                }}
-                className="px-3 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-white"
-              >
-                Use Local SRE Engine
-              </button>
-              <button
-                onClick={handleSaveKey}
-                className="px-4 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-500 transition-colors"
-              >
-                Save & Connect
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 };

@@ -9,23 +9,31 @@ import {
   Server,
   Users,
   Flame,
-  ArrowUpRight,
-  TrendingDown,
-  CheckCircle2,
   FileCode,
 } from "lucide-react";
-import { IncidentTriageData } from "@/types/incident";
+import { IncidentAnalysisData } from "@/types/incident";
 
 interface SlaTelemetryStripProps {
-  triageData: IncidentTriageData;
+  analysisData: IncidentAnalysisData;
   remainingSeconds: number;
 }
 
 export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
-  triageData,
+  analysisData,
   remainingSeconds,
 }) => {
-  const { severity, sentiment, vipClient, routing } = triageData;
+  const { severity, sentimentScore, sentimentLabel, vipClients, routing, slaRuleSummary } =
+    analysisData;
+
+  const primaryVip = vipClients[0] || {
+    name: "Enterprise Customer",
+    tier: "Tier-1 Enterprise",
+    arr: "$1.0M ARR",
+    slaThresholdMinutes: 30,
+    penaltyTerms: "Standard SLA invoice credit",
+    primaryContact: "VP Engineering",
+    impactSummary: "Operational degradation",
+  };
 
   const formatTime = (totalSec: number) => {
     if (totalSec <= 0) return "00:00 (BREACHED)";
@@ -34,7 +42,7 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  const totalSla = triageData.slaTotalSeconds || 1800;
+  const totalSla = (primaryVip.slaThresholdMinutes || 30) * 60;
   const progressPercent = Math.max(0, Math.min(100, (remainingSeconds / totalSla) * 100));
   const isP1 = severity === "P1";
   const isBreached = remainingSeconds <= 0;
@@ -52,7 +60,7 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
                 Incident Severity
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
-                {triageData.id}
+                {analysisData.id}
               </span>
             </div>
 
@@ -71,7 +79,7 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
                 Direct Revenue Risk
               </span>
               <span className="text-[10px] font-mono text-zinc-400 truncate">
-                {vipClient.businessImpact.split(".")[0]}
+                {primaryVip.impactSummary.split(".")[0]}
               </span>
             </div>
           </div>
@@ -92,7 +100,7 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
                 Live SLA Countdown
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800 text-zinc-400">
-                Rule: {vipClient.slaThresholdMinutes}m Max
+                Target: {primaryVip.slaThresholdMinutes}m
               </span>
             </div>
 
@@ -113,7 +121,6 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
               </span>
             </div>
 
-            {/* SLA Progress Bar */}
             <div className="w-full bg-zinc-950 h-1.5 rounded-full mt-3 overflow-hidden border border-zinc-800/80">
               <div
                 className={`h-full transition-all duration-1000 ${
@@ -134,41 +141,40 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
               <span className="text-[11px] font-mono uppercase tracking-wider text-zinc-400 flex items-center gap-1.5 font-semibold">
                 <Flame
                   className={`w-3.5 h-3.5 ${
-                    sentiment.score > 85 ? "text-rose-400" : "text-amber-400"
+                    sentimentScore > 85 ? "text-rose-400" : "text-amber-400"
                   }`}
                 />
                 Customer Anger Score
               </span>
               <span
                 className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
-                  sentiment.urgency === "CRITICAL"
+                  sentimentScore > 85
                     ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                     : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                 }`}
               >
-                {sentiment.urgency}
+                {sentimentScore > 85 ? "CRITICAL" : "ELEVATED"}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2">
               <span
                 className={`text-2xl font-black font-mono tracking-tight ${
-                  sentiment.score > 85 ? "text-rose-400" : "text-amber-400"
+                  sentimentScore > 85 ? "text-rose-400" : "text-amber-400"
                 }`}
               >
-                {sentiment.score}
+                {sentimentScore}
                 <span className="text-sm font-normal text-zinc-500">/100</span>
               </span>
               <span className="text-xs font-mono text-zinc-300 font-semibold truncate">
-                {sentiment.label.split("—")[1]?.trim() || "Escalation Threat"}
+                {sentimentLabel.split("—")[1]?.trim() || sentimentLabel}
               </span>
             </div>
 
-            {/* Anger Progress Gauge */}
             <div className="w-full bg-zinc-950 h-1.5 rounded-full mt-3 overflow-hidden border border-zinc-800/80">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-700"
-                style={{ width: `${sentiment.score}%` }}
+                style={{ width: `${sentimentScore}%` }}
               />
             </div>
           </div>
@@ -181,38 +187,38 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
                 VIP Contract Value at Risk
               </span>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
-                {vipClient.tier.split(" ")[0]}
+                {primaryVip.tier.split(" ")[0]}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-black font-mono text-emerald-400 tracking-tight">
-                {vipClient.contractValue}
+                {primaryVip.arr}
               </span>
               <span className="text-xs font-mono text-zinc-300 truncate font-semibold">
-                {vipClient.name}
+                {primaryVip.name}
               </span>
             </div>
 
             <div className="mt-3">
-              <p className="text-[10px] font-mono text-zinc-400 truncate" title={vipClient.slaPenaltyTerms}>
-                Penalty: {vipClient.slaPenaltyTerms}
+              <p className="text-[10px] font-mono text-zinc-400 truncate" title={primaryVip.penaltyTerms}>
+                Penalty: {primaryVip.penaltyTerms}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Executive Locus & SLA Penalty Banner */}
+        {/* Executive Banner: Locus & Owning Squad */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3.5 px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-xs font-mono">
           <div className="flex flex-wrap items-center gap-2 text-zinc-300">
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20 font-bold shrink-0">
               <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
               VIP CLIENT ESCALATION:
             </span>
-            <span className="text-white font-bold">{vipClient.name}</span>
+            <span className="text-white font-bold">{primaryVip.name}</span>
             <span className="text-zinc-500 hidden sm:inline">•</span>
             <span className="text-zinc-400 truncate hidden sm:inline">
-              Contact: {vipClient.primaryContact}
+              Contact: {primaryVip.primaryContact}
             </span>
           </div>
 
@@ -220,19 +226,19 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
               <Server className="w-3 h-3 text-blue-400" />
               <span className="text-zinc-500">Service:</span>
-              <span className="text-white font-semibold">{routing.failingMicroservice}</span>
+              <span className="text-white font-semibold">{routing.microservice}</span>
             </span>
 
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
               <FileCode className="w-3 h-3 text-rose-400" />
-              <span className="text-zinc-500">File:</span>
+              <span className="text-zinc-500">Locus:</span>
               <span className="text-rose-300 font-semibold">{routing.failingFile}:{routing.failingLine}</span>
             </span>
 
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-zinc-950 border border-zinc-800 text-zinc-300">
               <Users className="w-3 h-3 text-emerald-400" />
               <span className="text-zinc-500">Squad:</span>
-              <span className="text-emerald-300 font-semibold">{routing.assignedSquad}</span>
+              <span className="text-emerald-300 font-semibold">{routing.assignedDepartment}</span>
               <span className="text-zinc-400">({routing.onCallHandle.split(" ")[0]})</span>
             </span>
           </div>
