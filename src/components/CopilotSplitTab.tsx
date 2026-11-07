@@ -323,3 +323,6 @@ export const CopilotSplitTab: React.FC<CopilotSplitTabProps> = ({
     </div>
   );
 };
+
+export const CopilotChatTab = CopilotSplitTab;
+

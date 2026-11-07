@@ -26,6 +26,9 @@ interface TopControlBarProps {
   serverError: string | null;
   onDownloadPdf: () => void;
   isDownloadingPdf?: boolean;
+  activeModel?: string;
+  isFallback?: boolean;
+  fallbackReason?: string | null;
 }
 
 export const TopControlBar: React.FC<TopControlBarProps> = ({
@@ -40,6 +43,9 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
   serverError,
   onDownloadPdf,
   isDownloadingPdf = false,
+  activeModel = "gemini-2.5-flash",
+  isFallback = false,
+  fallbackReason = null,
 }) => {
   return (
     <header className="w-full border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-6 py-2.5">
@@ -74,18 +80,20 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
                 ● ANALYZING WITH GEMINI...
               </span>
-            ) : serverError ? (
+            ) : isFallback || serverError ? (
               <span
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30"
-                title={serverError}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 max-w-xs truncate"
+                title={fallbackReason || serverError || "Deterministic fallback engine active"}
               >
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                ● SERVER API ERROR
+                <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
+                <span className="truncate">
+                  ● FALLBACK MODE: {fallbackReason?.split(":")[0]?.substring(0, 20) || serverError?.split(":")[0]?.substring(0, 20) || "API CONTINGENCY"}
+                </span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                ● LIVE GEMINI 2.5 FLASH
+                ● LIVE GEMINI AI ({activeModel})
               </span>
             )}
           </div>
@@ -180,3 +188,6 @@ export const TopControlBar: React.FC<TopControlBarProps> = ({
     </header>
   );
 };
+
+export const CommandHeader = TopControlBar;
+

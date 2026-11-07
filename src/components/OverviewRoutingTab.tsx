@@ -12,7 +12,7 @@ import {
   ListOrdered,
   Sparkles,
 } from "lucide-react";
-import { IncidentRouting } from "@/types/incident";
+import { IncidentRouting, RunbookStep } from "@/types/incident";
 
 interface OverviewRoutingTabProps {
   routing: IncidentRouting;
@@ -38,7 +38,7 @@ export const OverviewRoutingTab: React.FC<OverviewRoutingTabProps> = ({
   };
 
   const totalSteps = routing.runbookSteps.length;
-  const completedCount = routing.runbookSteps.filter((s) => executedSteps[s.id]).length;
+  const completedCount = routing.runbookSteps.filter((s: RunbookStep) => executedSteps[s.id]).length;
   const completionPercentage = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0;
 
   return (
@@ -174,7 +174,7 @@ export const OverviewRoutingTab: React.FC<OverviewRoutingTabProps> = ({
             Executive Takeaways (Crisp 3-Bullet Brief)
           </span>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {routing.executiveBullets.slice(0, 3).map((bullet, idx) => (
+            {routing.executiveBullets.slice(0, 3).map((bullet: string, idx: number) => (
               <div
                 key={idx}
                 className="bg-zinc-950 border border-zinc-800/80 rounded-lg p-3 text-xs font-mono text-zinc-300 leading-snug flex items-start gap-2"
@@ -207,7 +207,7 @@ export const OverviewRoutingTab: React.FC<OverviewRoutingTabProps> = ({
 
         {/* Steps List */}
         <div className="space-y-4">
-          {routing.runbookSteps.map((step, index) => {
+          {routing.runbookSteps.map((step: RunbookStep, index: number) => {
             const isDone = !!executedSteps[step.id];
 
             return (
@@ -325,3 +325,6 @@ export const OverviewRoutingTab: React.FC<OverviewRoutingTabProps> = ({
     </div>
   );
 };
+
+export const RoutingRunbookTab = OverviewRoutingTab;
+

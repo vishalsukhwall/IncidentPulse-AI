@@ -140,7 +140,7 @@ export const DualReportsTab: React.FC<DualReportsTabProps> = ({
                 Executed Remediations & Probes
               </span>
               <ul className="space-y-2 bg-zinc-950 p-3.5 rounded-lg border border-zinc-800">
-                {engineerPostMortem.executedFixSummary.map((fix, idx) => (
+                {engineerPostMortem.executedFixSummary.map((fix: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2 text-zinc-300">
                     <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" />
                     <span className="leading-snug">{fix}</span>
@@ -155,7 +155,7 @@ export const DualReportsTab: React.FC<DualReportsTabProps> = ({
                 Permanent Architectural Guardrails
               </span>
               <ul className="space-y-2 bg-zinc-950 p-3.5 rounded-lg border border-zinc-800">
-                {engineerPostMortem.preventativeMeasures.map((measure, idx) => (
+                {engineerPostMortem.preventativeMeasures.map((measure: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-2 text-zinc-300">
                     <span className="text-amber-400 font-bold mt-0.5">•</span>
                     <span className="leading-snug">{measure}</span>
@@ -256,3 +256,6 @@ export const DualReportsTab: React.FC<DualReportsTabProps> = ({
     </div>
   );
 };
+
+export const DualReportTab = DualReportsTab;
+

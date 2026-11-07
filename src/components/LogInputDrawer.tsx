@@ -169,3 +169,6 @@ export const LogInputDrawer: React.FC<LogInputDrawerProps> = ({
     </div>
   );
 };
+
+export const LogIngestionDrawer = LogInputDrawer;
+

@@ -34,12 +34,12 @@ export default function IncidentPulseCommandCenter() {
   );
   const [rawText, setRawText] = useState<string>(PRESET_P1_PAYMENT_OUTAGE.rawText);
   const [analysisData, setAnalysisData] = useState<IncidentAnalysisData>(
-    PRESET_P1_PAYMENT_OUTAGE.initialAnalysis
+    PRESET_P1_PAYMENT_OUTAGE.triageData || PRESET_P1_PAYMENT_OUTAGE.initialAnalysis!
   );
 
   // SLA Live Countdown State
   const [remainingSeconds, setRemainingSeconds] = useState<number>(
-    (PRESET_P1_PAYMENT_OUTAGE.initialAnalysis.slaMinutesRemaining || 18) * 60
+    ((PRESET_P1_PAYMENT_OUTAGE.triageData || PRESET_P1_PAYMENT_OUTAGE.initialAnalysis)?.slaMinutesRemaining || 18) * 60
   );
 
   // Active Tab
@@ -123,6 +123,15 @@ export default function IncidentPulseCommandCenter() {
         const mins = result.data.slaMinutesRemaining || 20;
         setRemainingSeconds(mins * 60);
         setIsDrawerOpen(false);
+
+        // Check if response was returned via fallback mode
+        if (result._meta?.source === "fallback" || result.data._meta?.source === "fallback") {
+          const fallbackErr = result._meta?.error || result.data._meta?.error || "Deterministic local fallback active";
+          const status = result._meta?.statusCode ? ` (HTTP ${result._meta?.statusCode})` : "";
+          setServerError(`Gemini API Fallback Mode${status}: ${fallbackErr}`);
+        } else {
+          setServerError(null);
+        }
       } else {
         throw new Error(
           result.error ||
@@ -215,21 +224,24 @@ export default function IncidentPulseCommandCenter() {
         serverError={serverError}
         onDownloadPdf={handleDownloadPdf}
         isDownloadingPdf={isDownloadingPdf}
+        activeModel={analysisData._meta?.modelUsed || "gemini-2.5-flash"}
+        isFallback={analysisData._meta?.source === "fallback"}
+        fallbackReason={analysisData._meta?.error || serverError}
       />
 
-      {/* Server Error Toast Banner */}
+      {/* Server Error / Fallback Diagnostics Banner */}
       {serverError && (
         <div className="bg-rose-950 border-b border-rose-800 text-rose-200 px-4 py-3 text-xs font-mono flex items-center justify-between shadow-roseGlow">
           <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
               <span>
-                <strong className="text-white">Gemini API Error:</strong> {serverError}
+                <strong className="text-white">API Diagnostic Banner:</strong> {serverError}
               </span>
             </div>
             <button
               onClick={() => setServerError(null)}
-              className="text-rose-400 hover:text-white px-2 py-0.5 rounded bg-zinc-900 border border-rose-800"
+              className="text-rose-400 hover:text-white px-2 py-0.5 rounded bg-zinc-900 border border-rose-800 transition-colors"
             >
               Dismiss
             </button>

@@ -1,6 +1,6 @@
 export type IncidentSeverity = "P1" | "P2" | "P3" | "P4";
 
-export interface VipClient {
+export interface VipClientProfile {
   name: string;
   tier: string;
   arr: string;
@@ -9,6 +9,8 @@ export interface VipClient {
   primaryContact: string;
   impactSummary: string;
 }
+
+export type VipClient = VipClientProfile;
 
 export interface RunbookStep {
   id: number;
@@ -21,12 +23,13 @@ export interface RunbookStep {
   executed?: boolean;
 }
 
-export interface IncidentRouting {
+export interface AutoRoutingDiagnosis {
   failingFile: string;
   failingLine: number;
   microservice: string;
   errorSignature: string;
   assignedDepartment: string;
+  assignedSquad: string; // alias
   onCallHandle: string;
   secondaryEscalation: string;
   confidence: number;
@@ -35,55 +38,59 @@ export interface IncidentRouting {
   runbookSteps: RunbookStep[];
 }
 
-export interface TimelinePillarStart {
+export type IncidentRouting = AutoRoutingDiagnosis;
+
+export interface TimelinePillar {
+  id: "kab-chalu-hua" | "kya-hua" | "kyun-hua" | "ab-kya-karein";
+  pillarBadge: string;
   timestamp: string;
   title: string;
   summary: string;
   bullets: string[];
-  citation: string;
+  codeOrLogReference?: string;
+  citation?: string;
+  blastRadius?: string;
+  statusType?: "start" | "impact" | "root-cause" | "action";
 }
 
-export interface TimelinePillarImpact {
-  timestamp: string;
-  title: string;
-  summary: string;
-  bullets: string[];
-  blastRadius: string;
-  citation: string;
+export interface IncidentTimelineObject {
+  startedAt: {
+    timestamp: string;
+    title: string;
+    summary: string;
+    bullets: string[];
+    citation?: string;
+  };
+  whatHappened: {
+    timestamp: string;
+    title: string;
+    summary: string;
+    bullets: string[];
+    blastRadius?: string;
+  };
+  whyItHappened: {
+    timestamp: string;
+    title: string;
+    summary: string;
+    technicalChain: string[];
+    codeSnippetOrTrace?: string;
+    citation?: string;
+  };
+  immediateAction: {
+    timestamp: string;
+    title: string;
+    summary: string;
+    actionBullets: string[];
+  };
+  longTermPrevention: {
+    ticketRef: string;
+    actions?: string[];
+  };
 }
 
-export interface TimelinePillarRootCause {
-  timestamp: string;
-  title: string;
-  summary: string;
-  technicalChain: string[];
-  codeSnippetOrTrace: string;
-  citation: string;
-}
+export type IncidentTimeline = TimelinePillar[] | IncidentTimelineObject | any;
 
-export interface TimelinePillarAction {
-  timestamp: string;
-  title: string;
-  summary: string;
-  actionBullets: string[];
-  citation: string;
-}
-
-export interface TimelinePillarPrevention {
-  title: string;
-  guardrails: string[];
-  ticketRef: string;
-}
-
-export interface IncidentTimeline {
-  startedAt: TimelinePillarStart;
-  whatHappened: TimelinePillarImpact;
-  whyItHappened: TimelinePillarRootCause;
-  immediateAction: TimelinePillarAction;
-  longTermPrevention: TimelinePillarPrevention;
-}
-
-export interface EngineerPostMortem {
+export interface TechnicalPostMortem {
   incidentId: string;
   incidentTitle: string;
   severity: IncidentSeverity;
@@ -97,7 +104,9 @@ export interface EngineerPostMortem {
   author: string;
 }
 
-export interface ClientBrief {
+export type EngineerPostMortem = TechnicalPostMortem;
+
+export interface VipClientBrief {
   clientName: string;
   recipient: string;
   subject: string;
@@ -109,27 +118,42 @@ export interface ClientBrief {
   signoff: string;
 }
 
+export type ClientBrief = VipClientBrief;
+
 export interface DualReports {
-  engineerPostMortem: EngineerPostMortem;
-  clientBrief: ClientBrief;
+  engineerPostMortem: TechnicalPostMortem;
+  clientBrief: VipClientBrief;
 }
 
-export interface IncidentAnalysisData {
+export interface IncidentMeta {
+  source: "live-gemini" | "fallback";
+  modelUsed?: string;
+  error?: string;
+  timestamp?: string;
+  statusCode?: number;
+}
+
+export interface IncidentTriageData {
   id: string;
   title: string;
   severity: IncidentSeverity;
+  severityReasoning?: string;
   sentimentScore: number;
   sentimentLabel: string;
   slaMinutesRemaining: number;
   slaRuleSummary: string;
-  vipClients: VipClient[];
-  routing: IncidentRouting;
+  vipClient: VipClientProfile;
+  vipClients: VipClientProfile[];
+  routing: AutoRoutingDiagnosis;
   timeline: IncidentTimeline;
+  techPostMortem: TechnicalPostMortem;
+  vipClientBrief: VipClientBrief;
   dualReports: DualReports;
   voiceBriefingScript: string;
-  analyzedAt: string;
-  source?: "gemini-3.8-flash" | "preset-cached";
+  _meta?: IncidentMeta;
 }
+
+export type IncidentAnalysisData = IncidentTriageData;
 
 export interface CopilotChatMessage {
   id: string;
@@ -146,6 +170,12 @@ export interface IncidentPreset {
   severity: IncidentSeverity;
   title: string;
   description: string;
+  rawLogs: string;
+  customerEmail: string;
   rawText: string;
-  initialAnalysis: IncidentAnalysisData;
+  triageData: IncidentTriageData;
+  initialAnalysis?: IncidentTriageData; // compatibility alias
+  failingService?: string;
+  clientName?: string;
+  arrAtRisk?: string;
 }

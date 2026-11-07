@@ -131,7 +131,7 @@ export function generateIncidentPdf(data: IncidentAnalysisData) {
   doc.text("3. Executed Runbook Mitigations", 14, currentY);
   currentY += 5;
 
-  const fixRows = data.routing.runbookSteps.map((step, idx) => [
+  const fixRows = data.routing.runbookSteps.map((step: any, idx: number) => [
     `Step ${idx + 1}`,
     step.title,
     step.command.substring(0, 60) + (step.command.length > 60 ? "..." : ""),
@@ -173,7 +173,7 @@ export function generateIncidentPdf(data: IncidentAnalysisData) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(51, 65, 85);
-  engineerPostMortem.preventativeMeasures.forEach((measure) => {
+  engineerPostMortem.preventativeMeasures.forEach((measure: string) => {
     doc.text(`• ${measure}`, 16, currentY);
     currentY += 4.5;
   });

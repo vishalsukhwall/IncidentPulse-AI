@@ -25,7 +25,7 @@ export const SlaTelemetryStrip: React.FC<SlaTelemetryStripProps> = ({
   const { severity, sentimentScore, sentimentLabel, vipClients, routing, slaRuleSummary } =
     analysisData;
 
-  const primaryVip = vipClients[0] || {
+  const primaryVip = (vipClients && vipClients[0]) || analysisData.vipClient || {
     name: "Enterprise Customer",
     tier: "Tier-1 Enterprise",
     arr: "$1.0M ARR",
