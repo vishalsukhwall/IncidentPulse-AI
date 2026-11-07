@@ -128,7 +128,7 @@ export interface IncidentAnalysisData {
   dualReports: DualReports;
   voiceBriefingScript: string;
   analyzedAt: string;
-  source?: "gemini-2.5-flash" | "preset-cached";
+  source?: "gemini-3.8-flash" | "preset-cached";
 }
 
 export interface CopilotChatMessage {

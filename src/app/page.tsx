@@ -418,7 +418,7 @@ export default function IncidentPulseCommandCenter() {
             <span className="text-zinc-700">•</span>
             <span>Auth: <code className="text-zinc-400">process.env.GEMINI_API_KEY</code></span>
             <span className="text-zinc-700">•</span>
-            <span>Model: <code className="text-zinc-400">gemini-2.5-flash</code></span>
+            <span>Model: <code className="text-zinc-400">gemini-3.8-flash</code></span>
           </div>
 
           <div className="text-zinc-400">

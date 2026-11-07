@@ -42,7 +42,7 @@ npm run dev
 
 - **Framework**: Next.js 14+ (App Router, React 18, TypeScript)
 - **Official AI SDK**: `@google/genai` (`new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })`)
-- **Model**: `gemini-2.5-flash` with `responseMimeType: "application/json"` and strict `responseSchema` / `Type` definitions
+- **Model**: `gemini-3.8-flash` with `responseMimeType: "application/json"` and strict `responseSchema` / `Type` definitions
 - **Endpoints**:
   - `POST /api/analyze`: Ingests full untruncated telemetry `{ rawText }`, returns structured incident triage JSON.
   - `POST /api/chat`: Ingests `{ question, rawText, analysisContext, history }`, returns grounded answers citing exact `[TIMESTAMP]`, `[FILE]`, or `[EMAIL]` citations.

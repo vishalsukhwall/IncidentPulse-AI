@@ -345,7 +345,7 @@ ${rawText}
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.8-flash",
       contents: [
         { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] },
       ],
@@ -363,7 +363,7 @@ ${rawText}
 
     const parsedData: IncidentAnalysisData = JSON.parse(responseText);
     parsedData.analyzedAt = new Date().toISOString();
-    parsedData.source = "gemini-2.5-flash";
+    parsedData.source = "gemini-3.8-flash";
 
     return NextResponse.json({
       data: parsedData,
